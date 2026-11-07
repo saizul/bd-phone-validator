@@ -1,0 +1,215 @@
+# bd-phone-validator
+
+Validate, normalize, format and mask **Bangladeshi phone numbers**. Detects the mobile operator, tells mobile, landline and hotline numbers apart, understands Bangla digits, cleans whole CSV files, and plugs into form libraries. TypeScript, ESM + CommonJS, **zero runtime dependencies**.
+
+Built by [Saizul Amin](https://saizul.com). MIT licensed.
+
+```ts
+import { parse, isValid, normalize, getOperator, format } from 'bd-phone-validator';
+
+isValid('01712-345678');            // true
+normalize('+880 1712 345678');      // '+8801712345678'
+normalize('০১৭১২৩৪৫৬৭৮', 'local');   // '01712345678'
+getOperator('01912345678')?.name;   // 'Banglalink'
+format('8801712345678');            // '01712-345678'
+```
+
+## Install
+
+```bash
+npm install bd-phone-validator
+```
+
+## What it accepts
+
+All of these are the same number:
+
+```
+01712345678      +8801712345678     8801712345678     008801712345678
+01712-345678     01712 345678       +880 1712-345678  +880 (1712) 345678
++88001712345678  1712345678 (leading zero lost, e.g. from a spreadsheet)
+০১৭১২৩৪৫৬৭৮     +৮৮০১৭১২৩৪৫৬৭৮    tel:+8801712345678
+```
+
+## API
+
+### `parse(input, options?) -> PhoneInfo`
+
+Never throws. Returns everything in one object:
+
+```ts
+parse('+880 1612-345678');
+// {
+//   valid: true,
+//   input: '+880 1612-345678',
+//   digits: '01612345678',
+//   category: 'mobile',
+//   local: '01612345678',
+//   e164: '+8801612345678',
+//   operator: { id: 'robi', name: 'Robi', nameBn: 'রবি', prefix: '016', formerName: 'Airtel' },
+//   warnings: []
+// }
+
+parse('01012345678').error; // { code: 'invalid_operator_prefix', message: 'Unknown mobile operator prefix.' }
+```
+
+Options: `allow` (categories counted as valid, default `['mobile']`), `allowMissingLeadingZero` (default `true`), `locale` (`'en' | 'bn'` for messages).
+
+### `isValid`, `normalize`, `getOperator`, `getCategory`
+
+```ts
+isValid('01712345678');                 // true
+isValid('0222334455');                  // false (landline, not allowed by default)
+isValid('0222334455', { allow: ['mobile', 'landline'] }); // true
+
+normalize('01712-345678');              // '+8801712345678'  (E.164, default)
+normalize('+8801712345678', 'local');   // '01712345678'
+normalize('garbage');                   // null
+
+getOperator('01812345678')?.id;         // 'robi'
+getCategory('16263');                   // 'shortcode'
+```
+
+### `format(input, style?)`
+
+| style | result |
+| --- | --- |
+| `national` (default) | `01712-345678` |
+| `local` | `01712345678` |
+| `international` | `+880 1712-345678` |
+| `e164` | `+8801712345678` |
+| `msisdn` | `8801712345678` (SMS gateways) |
+
+Returns `null` for invalid input.
+
+### Operators
+
+| Prefix | Operator |
+| --- | --- |
+| 013, 017 | Grameenphone |
+| 014, 019 | Banglalink |
+| 015 | Teletalk |
+| 016 | Robi (formerly Airtel) |
+| 018 | Robi |
+
+> Because of mobile number portability a prefix only tells you the operator the number was **originally issued by**. Treat `getOperator` as a good hint, not a guarantee.
+
+### Landlines and short codes
+
+Separate categories, rejected unless you opt in:
+
+```ts
+parse('02-2233 4455', { allow: ['landline'] }).areaCode; // '02'  (Dhaka)
+parse('16263', { allow: ['shortcode'] }).category;       // 'shortcode'
+```
+
+Landline detection recognizes the main city area codes (Dhaka 02, Chattogram 031, Khulna 041, Bogura 051, Cumilla 081, Mymensingh 091, Barishal 0431, Rangpur 0521, Rajshahi 0721, Sylhet 0821); others report `unknown_area_code`. Short codes cover `999`, `333`, `109`, `106`, `199`, `112` and five-digit `16xxx` hotlines. These have no E.164 form.
+
+> **Note:** the landline area-code and short-code lists are a best-effort subset and are not taken from the official BTRC numbering plan. Mobile validation is the primary, well-tested feature; verify landline/short-code results for your use case, and PRs with corrections are welcome.
+
+### Error codes
+
+`not_a_string`, `empty`, `invalid_characters`, `too_short`, `too_long`, `invalid_country_code`, `invalid_operator_prefix`, `unknown_area_code`, `invalid_format`, `category_not_allowed`. Messages come in English and Bangla (`{ locale: 'bn' }`). `warnings` lists silent fixes: `bangla_digits`, `missing_leading_zero`, `extra_trunk_zero`, `international_prefix`.
+
+### Digits
+
+```ts
+import { toEnglishDigits, toBanglaDigits } from 'bd-phone-validator';
+toEnglishDigits('০১৭১২৩৪৫৬৭৮'); // '01712345678'
+toBanglaDigits('01712345678');   // '০১৭১২৩৪৫৬৭৮'
+```
+
+### Masking and redaction
+
+```ts
+import { mask, redact } from 'bd-phone-validator';
+mask('+8801712345678');                              // '017******78'
+mask('01712345678', { keepStart: 5, keepEnd: 0 });   // '01712******'
+redact('Call 01712-345678 about order 123456');      // 'Call 017******78 about order 123456'
+redact('Call 01712345678', { replacement: '[phone]' });
+```
+
+### Bulk validation
+
+```ts
+import { validateBulk, cleanList } from 'bd-phone-validator';
+
+const r = validateBulk(['01712345678', '+8801712345678', 'oops', '01912345678']);
+r.stats;   // { total: 4, valid: 3, invalid: 1, duplicates: 1, unique: 2, byOperator: {...}, ... }
+r.unique;  // PhoneInfo[] (first occurrence of each valid number)
+r.invalid; // entries with the reason for each failure
+
+cleanList(rawColumn);          // ['+8801712345678', '+8801912345678']
+cleanList(rawColumn, 'local'); // ['01712345678', '01912345678']
+```
+
+### Forms
+
+`phoneSchema()` returns a tiny validator that works without any schema library, and also exposes the [Standard Schema](https://standardschema.dev) contract (`~standard`) so libraries that support it can use it directly.
+
+```ts
+import { phoneSchema, rhfRule, antdRule, yupTest } from 'bd-phone-validator';
+
+const phone = phoneSchema({ locale: 'bn', required: true });
+phone.parse('০১৭১২৩৪৫৬৭৮');          // '+8801712345678' (throws PhoneValidationError otherwise)
+phone.safeParse('x');                 // { success: false, error }
+phone.validate('01712345678');        // true | 'message'
+
+// react-hook-form
+register('phone', rhfRule());                 // { validate: v => true | message }
+// Ant Design
+<Form.Item name="phone" rules={[antdRule()]} />
+// Yup
+string().test(yupTest());
+// Formik field level validate
+validate={phone.check}                        // message | undefined
+// Plain HTML
+<input pattern={MOBILE_INPUT_PATTERN} />
+```
+
+### Command line
+
+```bash
+npx bd-phone contacts.csv -o clean.csv --dedupe --only-valid
+cat numbers.txt | npx bd-phone -f local --summary
+```
+
+The CSV phone column is detected from the header (phone, mobile, msisdn, number...) or set with `-c name|index`. Five columns are appended: `phone_clean`, `phone_valid`, `phone_category`, `phone_operator`, `phone_error`.
+
+| Flag | Meaning |
+| --- | --- |
+| `-c, --column` | column name or index |
+| `-f, --format` | `e164` (default), `local`, `national`, `international`, `msisdn` |
+| `-o, --output` | output file (default stdout) |
+| `--dedupe` | keep only the first of each number |
+| `--only-valid` | drop invalid rows |
+| `--allow` | e.g. `mobile,landline` |
+| `--mask` | mask numbers in the output |
+| `--no-header` | CSV without header row |
+| `--summary` | print counts to stderr |
+
+## বাংলায় সংক্ষেপে
+
+বাংলাদেশের মোবাইল নম্বর যাচাই, স্ট্যান্ডার্ড ফরম্যাটে রূপান্তর এবং অপারেটর শনাক্ত করার লাইব্রেরি। বাংলা অঙ্ক (০১৭১২৩৪৫৬৭৮), `+৮৮০`, ড্যাশ ও স্পেস সহ যেকোনো ফরম্যাট বোঝে।
+
+```ts
+import { isValid, normalize, getOperator, toBanglaDigits } from 'bd-phone-validator';
+
+isValid('০১৭১২-৩৪৫৬৭৮');            // true
+normalize('০১৭১২৩৪৫৬৭৮');          // '+8801712345678'
+getOperator('01912345678')?.nameBn;  // 'বাংলালিংক'
+toBanglaDigits('01712345678');       // '০১৭১২৩৪৫৬৭৮'
+phoneSchema({ locale: 'bn' }).validate('');  // 'ফোন নম্বর দিন।'
+```
+
+অপারেটর কোড: ০১৩/০১৭ গ্রামীণফোন, ০১৪/০১৯ বাংলালিংক, ০১৫ টেলিটক, ০১৬/০১৮ রবি। নম্বর পোর্টেবিলিটির কারণে কোড দেখে অপারেটর শনাক্তকরণ ১০০% নিশ্চিত নয়।
+
+## Development
+
+```bash
+npm install
+npm run check   # eslint + tsc + vitest (unit and property-based tests)
+npm run build   # ESM, CJS, d.ts and the CLI into dist/
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CHANGELOG.md](CHANGELOG.md). All example numbers are synthetic. Licensed under the [MIT License](LICENSE).

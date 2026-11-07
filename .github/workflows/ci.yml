@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type check
+        run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Smoke test the built package
+        run: |
+          node -e "const m=require('./dist/index.cjs'); if(m.normalize('01712345678')!=='+8801712345678') process.exit(1)"
+          node --input-type=module -e "import {normalize} from './dist/index.js'; if(normalize('01712345678')!=='+8801712345678') process.exit(1)"
+          echo "01712345678" | node dist/bin.js
