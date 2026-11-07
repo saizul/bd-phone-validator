@@ -1,5 +1,7 @@
 # bd-phone-validator
 
+[![CI](https://github.com/saizul/bd-phone-validator/actions/workflows/ci.yml/badge.svg)](https://github.com/saizul/bd-phone-validator/actions/workflows/ci.yml) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white) ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg) ![Zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
+
 Validate, normalize, format and mask **Bangladeshi phone numbers**. Detects the mobile operator, tells mobile, landline and hotline numbers apart, understands Bangla digits, cleans whole CSV files, and plugs into form libraries. TypeScript, ESM + CommonJS, **zero runtime dependencies**.
 
 Built by [Saizul Amin](https://saizul.com). MIT licensed.
