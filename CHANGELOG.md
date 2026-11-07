@@ -4,6 +4,12 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `toWhatsAppLink(number, text?)` builds a `https://wa.me/` click-to-chat link with an optional pre-filled message.
+- `toTelLink(number)` builds an E.164 `tel:` URI.
+
 ## [1.0.0] - 2026-03-30
 
 ### Added

@@ -1,6 +1,8 @@
 export { toEnglishDigits, toBanglaDigits, hasBanglaDigits } from './digits';
 export { parse, isValid, getOperator, getCategory } from './parse';
 export { format, formatInfo, normalize } from './format';
+export { toWhatsAppLink, toTelLink } from './links';
+export type { LinkOptions } from './links';
 export { mask, redact } from './mask';
 export type { MaskOptions, RedactOptions } from './mask';
 export { validateBulk, cleanList, dedupeKey } from './bulk';

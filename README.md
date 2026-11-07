@@ -121,6 +121,21 @@ toEnglishDigits('০১৭১২৩৪৫৬৭৮'); // '01712345678'
 toBanglaDigits('01712345678');   // '০১৭১২৩৪৫৬৭৮'
 ```
 
+### Links: WhatsApp and `tel:`
+
+```ts
+import { toWhatsAppLink, toTelLink } from 'bd-phone-validator';
+toWhatsAppLink('01712-345678');                     // 'https://wa.me/8801712345678'
+toWhatsAppLink('০১৭১২৩৪৫৬৭৮', 'Hi, is this available?');
+// 'https://wa.me/8801712345678?text=Hi%2C%20is%20this%20available%3F'
+toTelLink('01712345678');                           // 'tel:+8801712345678'
+toTelLink('02-22334455');                           // 'tel:+880222334455' (landlines work)
+toTelLink('999');                                   // null (short codes have no international form)
+toWhatsAppLink('12345');                            // null (invalid)
+```
+
+Both accept any input form that `parse` accepts and return `null` for invalid numbers. `toWhatsAppLink` uses the digits-only form WhatsApp requires and URL-encodes the optional message; it accepts mobile numbers only by default. `toTelLink` accepts mobile numbers and landlines. Pass `{ allow: [...] }` as the last argument to change that.
+
 ### Masking and redaction
 
 ```ts
