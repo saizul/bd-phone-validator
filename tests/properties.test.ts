@@ -130,6 +130,9 @@ describe('properties', () => {
       }),
       { numRuns: 500 },
     );
+    // regression: objects without a prototype cannot be converted with String()
+    expect(() => mask(Object.create(null))).not.toThrow();
+    expect(() => parse(Object.create(null))).not.toThrow();
     fc.assert(
       fc.property(fc.string({ maxLength: 40 }), (s) => {
         parse(s);

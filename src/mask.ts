@@ -47,7 +47,12 @@ export function mask(input: unknown, options: MaskOptions = {}): string {
     // country code digits are public; trunk zero is implied in international forms
     return maskDigits(formatted, international ? keepStart - 1 : keepStart, keepEnd, ch, international ? 3 : 0);
   }
-  const text = typeof input === 'string' ? input : String(input ?? '');
+  const text =
+    typeof input === 'string'
+      ? input
+      : typeof input === 'number' || typeof input === 'bigint'
+        ? String(input)
+        : '';
   return maskDigits(text, keepStart, keepEnd, ch);
 }
 
