@@ -133,4 +133,27 @@ describe('cli', () => {
     expect(runCli(['c.csv', '-c', 'nope'], t2.io)).toBe(2);
     expect(runCli(['c.csv', '-c', '9'], makeIo({ 'c.csv': 'phone\n1\n' }).io)).toBe(2);
   });
+
+  it('--json outputs objects with typed phone fields', () => {
+    const t = makeIo({ 'in.csv': CSV });
+    expect(runCli(['--json', '--only-valid', '--dedupe', 'in.csv'], t.io)).toBe(0);
+    const rows = JSON.parse(t.out()) as Record<string, unknown>[];
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatchObject({
+      name: 'Rahim',
+      phone_clean: '+8801712345678',
+      phone_valid: true,
+      phone_category: 'mobile',
+      phone_error: null,
+    });
+  });
+
+  it('--json keeps invalid rows with null clean value and error code', () => {
+    const t = makeIo({}, '12345\n');
+    expect(runCli(['--json'], t.io)).toBe(0);
+    const rows = JSON.parse(t.out()) as Record<string, unknown>[];
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ input: '12345', phone_clean: null, phone_valid: false });
+    expect(typeof rows[0]?.phone_error).toBe('string');
+  });
 });

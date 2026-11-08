@@ -7,6 +7,7 @@ All notable changes are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- CLI `--json` flag outputs a JSON array of objects instead of CSV.
 - `toWhatsAppLink(number, text?)` builds a `https://wa.me/` click-to-chat link with an optional pre-filled message.
 - `toTelLink(number)` builds an E.164 `tel:` URI.
 
