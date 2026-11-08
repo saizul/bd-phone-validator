@@ -27,6 +27,7 @@ Options:
       --only-valid            drop invalid rows
       --allow <list>          comma list of mobile,landline,shortcode (default: mobile)
       --mask                  mask numbers in the output
+      --json                  output a JSON array of objects instead of CSV
       --no-header             CSV has no header row
       --summary               print counts to stderr
   -h, --help                  show help
@@ -50,6 +51,7 @@ interface Args {
   onlyValid: boolean;
   allow: NumberCategory[];
   mask: boolean;
+  json: boolean;
   header: boolean;
   summary: boolean;
   help: boolean;
@@ -65,6 +67,7 @@ function parseArgs(argv: readonly string[]): Args {
     onlyValid: false,
     allow: ['mobile'],
     mask: false,
+    json: false,
     header: true,
     summary: false,
     help: false,
@@ -109,6 +112,9 @@ function parseArgs(argv: readonly string[]): Args {
         break;
       case '--mask':
         a.mask = true;
+        break;
+      case '--json':
+        a.json = true;
         break;
       case '--no-header':
         a.header = false;
@@ -201,6 +207,7 @@ export function runCli(argv: readonly string[], io: CliIo): number {
   const result = validateBulk(values, { allow: args.allow, dedupe: args.dedupe });
 
   const out: string[][] = [];
+  const objects: Record<string, string | boolean | null>[] = [];
   const baseHeader = isCsv ? (header ?? null) : ['input'];
   if (baseHeader) out.push([...baseHeader, ...OUTPUT_COLUMNS]);
   result.entries.forEach((entry, i) => {
@@ -215,6 +222,20 @@ export function runCli(argv: readonly string[], io: CliIo): number {
     const original = [...(rows[i] ?? [])];
     if (!isCsv) original[0] = args.mask ? mask(original[0] ?? '', { allow: args.allow }) : (original[0] ?? '');
     else if (args.mask) original[col] = mask(original[col] ?? '', { allow: args.allow });
+    if (args.json) {
+      const base: Record<string, string> = {};
+      if (isCsv && header) header.forEach((h, k) => (base[h] = original[k] ?? ''));
+      else original.forEach((v, k) => (base[isCsv ? `column${k + 1}` : 'input'] = v));
+      objects.push({
+        ...base,
+        phone_clean: clean || null,
+        phone_valid: info.valid,
+        phone_category: info.category ?? null,
+        phone_operator: info.operator?.id ?? null,
+        phone_error: info.error?.code ?? null,
+      });
+      return;
+    }
     out.push([
       ...original,
       clean,
@@ -225,7 +246,7 @@ export function runCli(argv: readonly string[], io: CliIo): number {
     ]);
   });
 
-  const csv = stringifyCsv(out);
+  const csv = args.json ? `${JSON.stringify(objects, null, 2)}\n` : stringifyCsv(out);
   try {
     if (args.output) io.writeFile(args.output, csv);
     else io.stdout(csv);

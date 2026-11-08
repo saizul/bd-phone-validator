@@ -202,6 +202,7 @@ The CSV phone column is detected from the header (phone, mobile, msisdn, number.
 | `--only-valid` | drop invalid rows |
 | `--allow` | e.g. `mobile,landline` |
 | `--mask` | mask numbers in the output |
+| `--json` | output a JSON array of objects (input columns plus `phone_*` fields) |
 | `--no-header` | CSV without header row |
 | `--summary` | print counts to stderr |
 
