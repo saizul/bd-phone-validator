@@ -22,6 +22,18 @@ format('8801712345678');            // '01712-345678'
 npm install bd-phone-validator
 ```
 
+
+## Install from GitHub Packages
+
+Releases are also published to [GitHub Packages](https://github.com/saizul/bd-phone-validator/pkgs/npm/bd-phone-validator) as `@saizul/bd-phone-validator`:
+
+```bash
+echo "@saizul:registry=https://npm.pkg.github.com" >> .npmrc
+npm install @saizul/bd-phone-validator
+```
+
+GitHub Packages needs a personal access token with `read:packages` in your `~/.npmrc` (`//npm.pkg.github.com/:_authToken=YOUR_TOKEN`).
+
 ## What it accepts
 
 All of these are the same number:
