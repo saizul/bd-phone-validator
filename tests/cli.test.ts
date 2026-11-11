@@ -156,4 +156,79 @@ describe('cli', () => {
     expect(rows[0]).toMatchObject({ input: '12345', phone_clean: null, phone_valid: false });
     expect(typeof rows[0]?.phone_error).toBe('string');
   });
+
+  describe('--extract', () => {
+    const TEXT = `Chat export
+Rahim: call me on 01712-345678 after 5
+Karim: office +880 1812 345678, order 20240117
+Rahim: again 01712345678 or ০১৯১২৩৪৫৬৭৮
+`;
+
+    it('lists every number with its line and column', () => {
+      const t = makeIo({ 'chat.txt': TEXT });
+      expect(runCli(['--extract', 'chat.txt'], t.io)).toBe(0);
+      expect(t.out().trim().split('\n')).toEqual([
+        'line,column,match,phone_clean,phone_category,phone_operator',
+        '2,19,01712-345678,+8801712345678,mobile,grameenphone',
+        '3,15,+880 1812 345678,+8801812345678,mobile,robi',
+        '4,14,01712345678,+8801712345678,mobile,grameenphone',
+        '4,29,০১৯১২৩৪৫৬৭৮,+8801912345678,mobile,banglalink',
+      ]);
+    });
+
+    it('supports --dedupe, --format and --summary from stdin', () => {
+      const t = makeIo({}, TEXT);
+      expect(runCli(['--extract', '--dedupe', '-f', 'local', '--summary'], t.io)).toBe(0);
+      expect(t.out().trim().split('\n').slice(1)).toEqual([
+        '2,19,01712-345678,01712345678,mobile,grameenphone',
+        '3,15,+880 1812 345678,01812345678,mobile,robi',
+        '4,29,০১৯১২৩৪৫৬৭৮,01912345678,mobile,banglalink',
+      ]);
+      expect(t.err()).toBe('found=4 unique=3 duplicates=1\n');
+    });
+
+    it('outputs JSON with numeric positions', () => {
+      const t = makeIo({ 'chat.txt': TEXT });
+      expect(runCli(['--extract', '--json', '--dedupe', 'chat.txt'], t.io)).toBe(0);
+      const data = JSON.parse(t.out());
+      expect(data).toHaveLength(3);
+      expect(data[0]).toEqual({
+        line: 2,
+        column: 19,
+        match: '01712-345678',
+        phone_clean: '+8801712345678',
+        phone_category: 'mobile',
+        phone_operator: 'grameenphone',
+      });
+    });
+
+    it('masks both the match and the clean value', () => {
+      const t = makeIo({}, 'call 01712-345678');
+      expect(runCli(['--extract', '--mask', '-f', 'local'], t.io)).toBe(0);
+      expect(t.out().trim().split('\n')[1]).toBe('1,6,017******78,017******78,mobile,grameenphone');
+    });
+
+    it('honours --allow and writes to --output', () => {
+      const t = makeIo({}, 'Dial 999 or 02-22334455');
+      expect(runCli(['--extract', '--allow', 'landline,shortcode', '-o', 'out.csv'], t.io)).toBe(0);
+      expect(t.out()).toBe('');
+      expect((t.written['out.csv'] as string).trim().split('\n').slice(1)).toEqual([
+        '1,6,999,999,shortcode,',
+        '1,13,02-22334455,+880222334455,landline,',
+      ]);
+    });
+
+    it('prints only the header when nothing is found', () => {
+      const t = makeIo({}, 'no numbers, just 12345');
+      expect(runCli(['--extract', '--summary'], t.io)).toBe(0);
+      expect(t.out().trim()).toBe('line,column,match,phone_clean,phone_category,phone_operator');
+      expect(t.err()).toBe('found=0 unique=0 duplicates=0\n');
+    });
+
+    it('rejects --column', () => {
+      const t = makeIo({}, 'x');
+      expect(runCli(['--extract', '-c', 'phone'], t.io)).toBe(2);
+      expect(t.err()).toContain('--column cannot be used with --extract');
+    });
+  });
 });
