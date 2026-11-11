@@ -158,6 +158,28 @@ redact('Call 01712-345678 about order 123456');      // 'Call 017******78 about 
 redact('Call 01712345678', { replacement: '[phone]' });
 ```
 
+### Finding numbers in free text
+
+```ts
+import { findNumbers, extractNumbers } from 'bd-phone-validator';
+
+const text = 'Rahim 01712-345678, office +880 1812 345678.\nOrder 20240117, bKash ০১৯১২৩৪৫৬৭৮';
+
+extractNumbers(text);                     // ['+8801712345678', '+8801812345678', '+8801912345678']
+extractNumbers(text, { style: 'local' }); // ['01712345678', '01812345678', '01912345678']
+
+findNumbers(text)[1];
+// { start: 27, end: 43, line: 1, column: 28, raw: '+880 1812 345678', info: { valid: true, e164: '+8801812345678', ... } }
+```
+
+`findNumbers` returns one `PhoneMatch` per number, in order, with `text.slice(start, end) === raw`. Dates, amounts and order ids are skipped because every candidate has to pass `parse`. Differences from `parse` defaults, chosen to keep false positives low in prose:
+
+- mobile numbers only; pass `{ allow: ['mobile', 'landline', 'shortcode'] }` to widen it (short codes such as `999` match a lot of ordinary numbers),
+- a lost leading zero (`1712345678`) is **not** accepted unless you pass `{ allowMissingLeadingZero: true }`,
+- a number never spans a line break.
+
+`extractNumbers` de-duplicates by default (`{ unique: false }` keeps repeats) and takes any `format` style; `{ limit: n }` stops after `n` matches.
+
 ### Bulk validation
 
 ```ts
@@ -203,6 +225,15 @@ npx bd-phone contacts.csv -o clean.csv --dedupe --only-valid
 cat numbers.txt | npx bd-phone -f local --summary
 ```
 
+Pull numbers out of free text (a chat export, an email, a saved web page) with `--extract`:
+
+```bash
+npx bd-phone --extract chat.txt --dedupe -f local
+# line,column,match,phone_clean,phone_category,phone_operator
+# 3,14,01712-345678,01712345678,mobile,grameenphone
+# 9,1,+880 1812 345678,01812345678,mobile,robi
+```
+
 The CSV phone column is detected from the header (phone, mobile, msisdn, number...) or set with `-c name|index`. Five columns are appended: `phone_clean`, `phone_valid`, `phone_category`, `phone_operator`, `phone_error`.
 
 | Flag | Meaning |
@@ -215,6 +246,7 @@ The CSV phone column is detected from the header (phone, mobile, msisdn, number.
 | `--allow` | e.g. `mobile,landline` |
 | `--mask` | mask numbers in the output |
 | `--json` | output a JSON array of objects (input columns plus `phone_*` fields) |
+| `--extract` | free-text mode: one row per number found, with `line`, `column` and the raw `match` |
 | `--no-header` | CSV without header row |
 | `--summary` | print counts to stderr |
 

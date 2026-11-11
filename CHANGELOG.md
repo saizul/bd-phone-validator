@@ -10,6 +10,9 @@ All notable changes are documented here. The format follows
 - CLI `--json` flag outputs a JSON array of objects instead of CSV.
 - `toWhatsAppLink(number, text?)` builds a `https://wa.me/` click-to-chat link with an optional pre-filled message.
 - `toTelLink(number)` builds an E.164 `tel:` URI.
+- `findNumbers(text)` locates every valid number inside free text and returns its position (`start`, `end`, `line`, `column`), the raw match and the parsed `PhoneInfo`.
+- `extractNumbers(text)` returns the numbers found in free text as a clean, de-duplicated list in any format style.
+- CLI `--extract` mode lists every number found in a free-text file (chat export, email, HTML) with line and column; works with `--format`, `--dedupe`, `--allow`, `--mask`, `--json` and `--summary`.
 
 ## [1.0.0] - 2026-03-30
 

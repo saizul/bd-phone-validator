@@ -1,5 +1,6 @@
-import { validateBulk } from './bulk';
+import { dedupeKey, validateBulk } from './bulk';
 import { parseCsv, stringifyCsv } from './csv';
+import { findNumbers } from './find';
 import { formatInfo } from './format';
 import { mask } from './mask';
 import type { FormatStyle, NumberCategory } from './types';
@@ -18,6 +19,7 @@ const HELP = `bd-phone - clean and validate Bangladeshi phone numbers
 
 Usage:
   bd-phone [options] [file]        read CSV or one-number-per-line text (stdin if no file)
+  bd-phone --extract [options] [file]   find numbers anywhere in free text
 
 Options:
   -c, --column <name|index>   column holding the numbers (CSV). Auto-detected by header name
@@ -28,6 +30,8 @@ Options:
       --allow <list>          comma list of mobile,landline,shortcode (default: mobile)
       --mask                  mask numbers in the output
       --json                  output a JSON array of objects instead of CSV
+      --extract               treat the input as free text and list every number found in it
+                              (columns: line, column, match, phone_clean, phone_category, phone_operator)
       --no-header             CSV has no header row
       --summary               print counts to stderr
   -h, --help                  show help
@@ -41,6 +45,8 @@ const CATEGORIES: readonly NumberCategory[] = ['mobile', 'landline', 'shortcode'
 const HEADER_HINT = /phone|mobile|msisdn|number|contact|cell|tel|ফোন|মোবাইল/i;
 /** Columns appended to every output row. */
 export const OUTPUT_COLUMNS = ['phone_clean', 'phone_valid', 'phone_category', 'phone_operator', 'phone_error'] as const;
+/** Columns written by `--extract`. */
+export const EXTRACT_COLUMNS = ['line', 'column', 'match', 'phone_clean', 'phone_category', 'phone_operator'] as const;
 
 interface Args {
   file?: string;
@@ -52,6 +58,7 @@ interface Args {
   allow: NumberCategory[];
   mask: boolean;
   json: boolean;
+  extract: boolean;
   header: boolean;
   summary: boolean;
   help: boolean;
@@ -68,6 +75,7 @@ function parseArgs(argv: readonly string[]): Args {
     allow: ['mobile'],
     mask: false,
     json: false,
+    extract: false,
     header: true,
     summary: false,
     help: false,
@@ -116,6 +124,9 @@ function parseArgs(argv: readonly string[]): Args {
       case '--json':
         a.json = true;
         break;
+      case '--extract':
+        a.extract = true;
+        break;
       case '--no-header':
         a.header = false;
         break;
@@ -136,6 +147,7 @@ function parseArgs(argv: readonly string[]): Args {
         a.file = arg;
     }
   }
+  if (a.extract && a.column !== undefined) throw new UsageError('--column cannot be used with --extract');
   return a;
 }
 
@@ -155,6 +167,42 @@ function pickColumn(header: readonly string[] | undefined, width: number, wanted
     if (idx >= 0) return idx;
   }
   return 0;
+}
+
+/** `--extract`: list every number found in free text, one output row per match. */
+function runExtract(text: string, args: Args): { output: string; summary: string } {
+  const matches = findNumbers(text, { allow: args.allow });
+  const seen = new Set<string>();
+  const rows: string[][] = [[...EXTRACT_COLUMNS]];
+  const objects: Record<string, string | number | null>[] = [];
+  for (const m of matches) {
+    const key = dedupeKey(m.info);
+    const repeated = seen.has(key);
+    seen.add(key);
+    if (repeated && args.dedupe) continue;
+    let clean = formatInfo(m.info, args.format) ?? m.info.local ?? '';
+    let raw = m.raw;
+    if (args.mask) {
+      clean = mask(clean, { allow: args.allow, style: args.format });
+      raw = mask(raw, { allow: args.allow });
+    }
+    if (args.json) {
+      objects.push({
+        line: m.line,
+        column: m.column,
+        match: raw,
+        phone_clean: clean,
+        phone_category: m.info.category ?? null,
+        phone_operator: m.info.operator?.id ?? null,
+      });
+    } else {
+      rows.push([String(m.line), String(m.column), raw, clean, m.info.category ?? '', m.info.operator?.id ?? '']);
+    }
+  }
+  return {
+    output: args.json ? `${JSON.stringify(objects, null, 2)}\n` : stringifyCsv(rows),
+    summary: `found=${matches.length} unique=${seen.size} duplicates=${matches.length - seen.size}\n`,
+  };
 }
 
 /**
@@ -184,6 +232,19 @@ export function runCli(argv: readonly string[], io: CliIo): number {
   } catch (e) {
     io.stderr(`bd-phone: cannot read input: ${(e as Error).message}\n`);
     return 2;
+  }
+
+  if (args.extract) {
+    const { output, summary } = runExtract(text, args);
+    try {
+      if (args.output) io.writeFile(args.output, output);
+      else io.stdout(output);
+    } catch (e) {
+      io.stderr(`bd-phone: cannot write output: ${(e as Error).message}\n`);
+      return 2;
+    }
+    if (args.summary) io.stderr(summary);
+    return 0;
   }
 
   const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
