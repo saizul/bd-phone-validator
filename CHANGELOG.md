@@ -13,6 +13,8 @@ All notable changes are documented here. The format follows
 - `findNumbers(text)` locates every valid number inside free text and returns its position (`start`, `end`, `line`, `column`), the raw match and the parsed `PhoneInfo`.
 - `extractNumbers(text)` returns the numbers found in free text as a clean, de-duplicated list in any format style.
 - CLI `--extract` mode lists every number found in a free-text file (chat export, email, HTML) with line and column; works with `--format`, `--dedupe`, `--allow`, `--mask`, `--json` and `--summary`.
+- `formatAsYouType(value, options?)` formats a partially typed number for input fields (`017123` -> `01712-3`, `+88017123` -> `+880 1712-3`), keeps Bangla digits, and reports `operator`, `category`, `areaCode`, `complete`, `possible`, `remaining` and `e164` as soon as they are known. Options: `style`, `digits`, `allowMissingLeadingZero` and `cursor` (maps the caret into the formatted value).
+- `AsYouType` class: stateful wrapper with `input()`, `backspace()`, `reset()`, `raw` and `result`.
 
 ## [1.0.0] - 2026-03-30
 

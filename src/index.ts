@@ -5,6 +5,8 @@ export { toWhatsAppLink, toTelLink } from './links';
 export type { LinkOptions } from './links';
 export { mask, redact } from './mask';
 export type { MaskOptions, RedactOptions } from './mask';
+export { formatAsYouType, AsYouType } from './asyoutype';
+export type { AsYouTypeOptions, AsYouTypeResult, AsYouTypeStyle } from './asyoutype';
 export { findNumbers, extractNumbers } from './find';
 export type { FindOptions, ExtractOptions, PhoneMatch } from './find';
 export { validateBulk, cleanList, dedupeKey } from './bulk';
