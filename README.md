@@ -148,6 +148,60 @@ toWhatsAppLink('12345');                            // null (invalid)
 
 Both accept any input form that `parse` accepts and return `null` for invalid numbers. `toWhatsAppLink` uses the digits-only form WhatsApp requires and URL-encodes the optional message; it accepts mobile numbers only by default. `toTelLink` accepts mobile numbers and landlines. Pass `{ allow: [...] }` as the last argument to change that.
 
+### Formatting while typing
+
+`formatAsYouType(value, options?)` formats a partially typed number for display inside an
+input field. It is stateless (pass the whole field value on every keystroke), never throws and
+accepts every form `parse` accepts.
+
+```ts
+import { formatAsYouType, AsYouType } from 'bd-phone-validator';
+
+formatAsYouType('017123').formatted;        // '01712-3'
+formatAsYouType('+88017123').formatted;     // '+880 1712-3'
+formatAsYouType('০১৭১২৩').formatted;        // '০১৭১২-৩' (Bangla digits are kept)
+formatAsYouType('0191').operator?.name;     // 'Banglalink', as soon as the prefix is typed
+formatAsYouType('0171234');
+// { formatted: '01712-34', national: '0171234', category: 'mobile', operator: {...},
+//   complete: false, possible: true, remaining: 4 }
+formatAsYouType('012').possible;            // false: no operator uses 012
+```
+
+| Field | Meaning |
+| --- | --- |
+| `formatted` | display string (`01712-34`, `+880 1712-34`, `02-22`) |
+| `national` | English digits so far with the trunk zero |
+| `category`, `operator`, `areaCode` | filled in as soon as they are known |
+| `complete` | the digits form a valid number; `e164` is then set |
+| `possible` | `false` when more typing cannot make it valid (unknown prefix, too long, letters) |
+| `remaining` | digits still missing for a mobile number |
+| `cursor` | caret position in `formatted`, when `options.cursor` is passed |
+
+Options: `style` (`auto` follows the input, `national`, `international`), `digits` (`auto`,
+`en`, `bn`), `allowMissingLeadingZero` (default `true`; `1712...` becomes `01712-...` once it
+can no longer be a hotline such as `16263`) and `cursor`.
+
+Keeping the caret in place in a plain input:
+
+```ts
+input.addEventListener('input', () => {
+  const r = formatAsYouType(input.value, { cursor: input.selectionStart ?? input.value.length });
+  input.value = r.formatted;
+  input.setSelectionRange(r.cursor!, r.cursor!);
+  input.setCustomValidity(r.possible ? '' : 'Not a Bangladeshi number');
+});
+```
+
+`AsYouType` is a stateful wrapper for key-by-key handling:
+
+```ts
+const typer = new AsYouType();
+typer.input('0171'); // '0171'
+typer.input('23');   // '01712-3'
+typer.backspace();   // '01712'
+typer.result.operator?.name; // 'Grameenphone'
+```
+
 ### Masking and redaction
 
 ```ts
