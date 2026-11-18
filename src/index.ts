@@ -1,7 +1,9 @@
 export { toEnglishDigits, toBanglaDigits, hasBanglaDigits } from './digits';
 export { parse, isValid, getOperator, getCategory } from './parse';
 export { format, formatInfo, normalize } from './format';
-export { toWhatsAppLink, toTelLink } from './links';
+export { toWhatsAppLink, toTelLink, toSmsLink } from './links';
+export { isSameNumber } from './compare';
+export type { CompareOptions } from './compare';
 export type { LinkOptions } from './links';
 export { mask, redact } from './mask';
 export type { MaskOptions, RedactOptions } from './mask';

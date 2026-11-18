@@ -40,3 +40,21 @@ export function toTelLink(input: unknown, options: LinkOptions = {}): string | n
   const e164 = format(input, 'e164', { allow: TEL_CATEGORIES, ...options });
   return e164 === null ? null : `tel:${e164}`;
 }
+
+/**
+ * Build an `sms:` URI (RFC 5724) in E.164 form that opens the messaging app, optionally with a
+ * pre-filled message body (`sms:+8801712345678?body=...`).
+ *
+ * Mobile numbers are accepted by default; returns `null` for invalid input. The body is
+ * URL-encoded as UTF-8, so Bangla text is safe.
+ *
+ * @example
+ * toSmsLink('01712345678');                    // 'sms:+8801712345678'
+ * toSmsLink('01712345678', 'Your OTP is 1234'); // 'sms:+8801712345678?body=Your%20OTP%20is%201234'
+ */
+export function toSmsLink(input: unknown, body?: string, options: LinkOptions = {}): string | null {
+  const e164 = format(input, 'e164', options);
+  if (e164 === null) return null;
+  const base = `sms:${e164}`;
+  return body ? `${base}?body=${encodeURIComponent(body)}` : base;
+}
