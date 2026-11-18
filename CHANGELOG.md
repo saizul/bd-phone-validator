@@ -7,6 +7,9 @@ All notable changes are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- `isSameNumber(a, b, options?)` tells whether two inputs are the same number regardless of how each is written (local, `+880`, `00880`, Bangla digits, separators, lost leading zero); invalid input never matches.
+- `toSmsLink(number, body?)` builds an RFC 5724 `sms:` URI in E.164 form with an optional URL-encoded message body.
+- Contributor community files: `CODE_OF_CONDUCT.md`, issue templates and a pull request template.
 - CLI `--json` flag outputs a JSON array of objects instead of CSV.
 - `toWhatsAppLink(number, text?)` builds a `https://wa.me/` click-to-chat link with an optional pre-filled message.
 - `toTelLink(number)` builds an E.164 `tel:` URI.

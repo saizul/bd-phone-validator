@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toTelLink, toWhatsAppLink } from '../src';
+import { toSmsLink, toTelLink, toWhatsAppLink } from '../src';
 
 describe('toWhatsAppLink', () => {
   it.each([
@@ -60,5 +60,30 @@ describe('toTelLink', () => {
 
   it('lets callers narrow the categories', () => {
     expect(toTelLink('02-22334455', { allow: ['mobile'] })).toBeNull();
+  });
+});
+
+describe('toSmsLink', () => {
+  it.each([['01712345678'], ['+880 1712-345678'], ['০১৭১২৩৪৫৬৭৮'], ['1712345678']])('%s -> sms URI', (input) => {
+    expect(toSmsLink(input)).toBe('sms:+8801712345678');
+  });
+
+  it('url-encodes the body as UTF-8', () => {
+    expect(toSmsLink('01712345678', 'Your OTP is 1234 & valid 5 min')).toBe(
+      'sms:+8801712345678?body=Your%20OTP%20is%201234%20%26%20valid%205%20min',
+    );
+    const link = toSmsLink('01712345678', 'ধন্যবাদ') as string;
+    expect(decodeURIComponent(link.split('?body=')[1])).toBe('ধন্যবাদ');
+    expect(link).not.toMatch(/[^\x20-\x7e]/);
+  });
+
+  it('omits the query for missing or empty body', () => {
+    expect(toSmsLink('01712345678', '')).toBe('sms:+8801712345678');
+  });
+
+  it('returns null for invalid numbers and landlines by default', () => {
+    expect(toSmsLink('12345')).toBeNull();
+    expect(toSmsLink('02-22334455')).toBeNull();
+    expect(toSmsLink('02-22334455', undefined, { allow: ['landline'] })).toBe('sms:+880222334455');
   });
 });

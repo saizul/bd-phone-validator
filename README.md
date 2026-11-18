@@ -133,7 +133,7 @@ toEnglishDigits('০১৭১২৩৪৫৬৭৮'); // '01712345678'
 toBanglaDigits('01712345678');   // '০১৭১২৩৪৫৬৭৮'
 ```
 
-### Links: WhatsApp and `tel:`
+### Links: WhatsApp, `tel:` and `sms:`
 
 ```ts
 import { toWhatsAppLink, toTelLink } from 'bd-phone-validator';
@@ -144,9 +144,25 @@ toTelLink('01712345678');                           // 'tel:+8801712345678'
 toTelLink('02-22334455');                           // 'tel:+880222334455' (landlines work)
 toTelLink('999');                                   // null (short codes have no international form)
 toWhatsAppLink('12345');                            // null (invalid)
+toSmsLink('01712345678', 'Your order has shipped'); // 'sms:+8801712345678?body=Your%20order%20has%20shipped'
 ```
 
 Both accept any input form that `parse` accepts and return `null` for invalid numbers. `toWhatsAppLink` uses the digits-only form WhatsApp requires and URL-encodes the optional message; it accepts mobile numbers only by default. `toTelLink` accepts mobile numbers and landlines. Pass `{ allow: [...] }` as the last argument to change that.
+`toSmsLink` builds an RFC 5724 `sms:` URI with an optional URL-encoded `body`; it accepts mobile numbers only by default.
+
+### Comparing numbers
+
+```ts
+import { isSameNumber } from 'bd-phone-validator';
+isSameNumber('01712-345678', '+880 1712 345678'); // true
+isSameNumber('০১৭১২৩৪৫৬৭৮', '1712345678');         // true (Bangla digits, lost leading zero)
+isSameNumber('01712345678', '01812345678');      // false
+isSameNumber('12345', '12345');                  // false (invalid input never matches)
+```
+
+Use it to match a customer's typed number against your records without normalizing both sides yourself. Mobile
+numbers, landlines and short codes are compared by default; pass `{ allow: [...] }` or `{ allowMissingLeadingZero: false }`
+to be stricter.
 
 ### Formatting while typing
 
